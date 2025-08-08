@@ -1,0 +1,163 @@
+
+Site Surgeon — Website Audit Service
+Status: ✅ Production-ready (Phase 1)
+Stack: Node/Express, Lighthouse, Puppeteer, JSDOM, TypeScript (where used), Replit hosting
+
+What it does
+Runs Lighthouse (mobile) + extra SEO checks (title/meta/H1, OG/Twitter, robots/sitemap, E-E-A-T heuristics, Local SEO hints).
+
+Computes an overall score and Top 3 Critical Fixes (impact × confidence).
+
+Generates HTML + PDF reports with a mobile screenshot.
+
+Webhooks lead data to GoHighLevel (GHL) for follow-ups.
+
+Serves static reports at /reports/{id}/….
+
+Endpoints
+Health
+bash
+Copy
+Edit
+GET /health
+→ { "ok": true }
+Run Audit
+bash
+Copy
+Edit
+POST /api/audit
+Content-Type: application/json
+{
+  "url": "https://example.com",
+  "email": "owner@example.com",
+  "name": "Jane Smith"   // optional
+}
+Response 200
+
+json
+Copy
+Edit
+{
+  "id": "ab12-…",
+  "url": "https://example.com",
+  "overallScore": 72,
+  "topFixes": [
+    {"id":"cwv_lcp","title":"Improve LCP (hero too heavy)","why":"Slow LCP hurts conversions & visibility.","how":"Compress hero to AVIF/WebP; preload; set dimensions.","est_hours":1.5},
+    {"id":"meta_description","title":"Add meta description","why":"Boost SERP CTR.","how":"Write 140–160 chars incl. intent + CTA.","est_hours":0.3},
+    {"id":"local_schema","title":"Add LocalBusiness schema","why":"Improves local relevance.","how":"JSON-LD with NAP, hours, sameAs.","est_hours":0.8}
+  ],
+  "reportUrlHTML": "https://…/reports/ab12/report.html",
+  "reportUrlPDF":  "https://…/reports/ab12/report.pdf",
+  "screenshotUrl": "https://…/reports/ab12/mobile.png"
+}
+cURL test
+
+bash
+Copy
+Edit
+curl -X POST "$BASE/api/audit" \
+  -H "content-type: application/json" \
+  -d '{"url":"https://example.com","email":"owner@example.com"}'
+Environment Variables (Replit → Secrets)
+ini
+Copy
+Edit
+GHL_WEBHOOK_URL = https://hooks.gohighlevel.com/…   # Incoming webhook
+BASE_URL        = https://sitesurgeon-api.replit.app
+BRAND_NAME      = HugemouthSEO
+# Optional PSI fallback if Chrome cannot launch:
+GOOGLE_PSI_API_KEY = (optional)
+Webhook (GHL)
+Event: site_audit_completed
+Payload fields used by workflows:
+
+contact.email, contact.name, site.url
+
+scores.overall, scores.lighthouse.performance, scores.coreWebVitals.{lcp_ms,inp_ms,cls,passed}
+
+top_fixes[] (array of objects)
+
+links.report_html, links.report_pdf, links.screenshot_mobile
+
+Workflow suggestion:
+
+Trigger: Incoming Webhook.
+
+Find/Create Contact by email.
+
+Set custom fields: Report HTML/PDF links, Overall Score.
+
+Send Day-0 email with Loom walkthrough and report links.
+
+If score < 75: create Task “Call to review top 3 fixes.”
+
+Day-3 / Day-7 follow-ups per funnel.
+
+Running Locally (Replit)
+Install: dependencies are in package.json.
+
+Start:
+
+bash
+Copy
+Edit
+npm start
+# Express listens on $PORT (Replit injects this)
+Static reports: written to /reports/{id}/… and served by Express.
+
+Frontend Integration (landing app)
+Set VITE_API_BASE to this API’s base URL.
+
+Submit POST /api/audit on “Run Free Audit”.
+
+Show results: score, topFixes, and links to HTML/PDF.
+
+Add a “Book Setup Call” button (GHL calendar).
+
+js
+Copy
+Edit
+const r = await fetch(`${import.meta.env.VITE_API_BASE}/api/audit`, {
+  method: 'POST',
+  headers: {'Content-Type':'application/json'},
+  body: JSON.stringify({ url, email, name })
+});
+const data = await r.json();
+Security & Limits
+Rate limit: 6 requests / minute per IP (Express Rate Limit).
+
+CORS: allow only your frontend origin(s).
+
+No PII storage beyond what’s needed for the webhook.
+
+Respect target sites’ robots/ToS; do not crawl aggressively.
+
+Troubleshooting
+Chrome can’t launch on Replit: set GOOGLE_PSI_API_KEY to enable PSI fallback.
+
+PDF/screenshot fails: ensure Puppeteer runs with --no-sandbox (already set).
+
+Webhook not received: re-check GHL_WEBHOOK_URL and Replit logs.
+
+QA Checklist (5 minutes)
+GET /health → { ok: true }.
+
+POST /api/audit with a real URL returns 200 + links.
+
+Open report.html and report.pdf in browser.
+
+Contact appears in GHL with report links; Day-0 email sent.
+
+Rate limit triggers if you hammer the endpoint.
+
+Frontend form → API → results screen flows end-to-end.
+
+Roadmap (Phase 2 — optional)
+Backlink gaps via Ahrefs/SEMrush API.
+
+Auth + per-user quotas.
+
+Push notifications from your SignalNoise app to start/finish focus blocks.
+
+ChatGPT Action to create tasks (“Add ‘Fix LCP for Acme’ to Signal”).
+
