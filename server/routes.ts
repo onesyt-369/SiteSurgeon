@@ -1,0 +1,98 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import express from "express";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import path from "path";
+import { fileURLToPath } from "url";
+import crypto from "crypto";
+import dayjs from "dayjs";
+
+// Import audit modules
+import { auditUrl } from "./lib/lighthouse.js";
+import { runExtraChecks } from "./lib/extraChecks.js";
+import { scoreAndFixes } from "./lib/scoring.js";
+import { renderAndSave } from "./lib/render.js";
+import { sendToGHL } from "./lib/webhook.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  app.use(cors());
+  app.use(express.json({ limit: "1mb" }));
+  
+  // Serve static reports
+  app.use("/reports", express.static(path.join(__dirname, "reports")));
+
+  // Rate limiting for API endpoints
+  const limiter = rateLimit({ windowMs: 60 * 1000, max: 6 });
+  app.use("/api/", limiter);
+
+  // Health check endpoint
+  app.get("/api/health", (_, res) => res.json({ ok: true }));
+
+  // Main audit endpoint
+  app.post("/api/audit", async (req, res) => {
+    try {
+      const { url, email, name } = req.body || {};
+      if (!url || !email) {
+        return res.status(400).json({ error: "url and email required" });
+      }
+
+      const id = crypto.randomUUID();
+      
+      // Run Lighthouse audit
+      const lh = await auditUrl(url);
+      
+      // Run extra SEO checks
+      const extra = await runExtraChecks(url);
+      
+      // Calculate scores and fixes
+      const scored = scoreAndFixes(lh, extra);
+
+      // Generate and save reports
+      const out = await renderAndSave({
+        id, 
+        url, 
+        lh, 
+        extra, 
+        scored,
+        brand: process.env.BRAND_NAME || "HugemouthSEO",
+        baseUrl: process.env.BASE_URL
+      });
+
+      // Send GHL webhook (non-blocking)
+      sendToGHL({
+        event: "site_audit_completed",
+        timestamp: dayjs().toISOString(),
+        contact: { email, name, source: "SiteSurgeon" },
+        site: { url: out.finalUrl || url, statusCode: 200 },
+        scores: scored.scores,
+        top_fixes: scored.topFixes,
+        links: {
+          report_html: out.reportHtmlUrl,
+          report_pdf: out.reportPdfUrl,
+          screenshot_mobile: out.screenshotUrl
+        }
+      }).catch(() => {});
+
+      return res.json({
+        id, 
+        url,
+        overallScore: scored.scores.overall,
+        topFixes: scored.topFixes,
+        reportUrlHTML: out.reportHtmlUrl,
+        reportUrlPDF: out.reportPdfUrl,
+        screenshotUrl: out.screenshotUrl,
+        scores: scored.scores
+      });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ error: "audit_failed" });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}

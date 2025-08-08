@@ -1,0 +1,102 @@
+Do these 3 things now
+1) Hook the form to the API
+Ask your Replit agent to wire the “Run Free Audit” button to your SiteSurgeon API:
+
+Frontend snippet (vanilla TS/JS)
+
+js
+Copy
+Edit
+async function runAudit(e){
+  e.preventDefault();
+  const url = document.querySelector('#url').value.trim();
+  const email = document.querySelector('#email').value.trim();
+  const name = document.querySelector('#name').value.trim();
+  if(!/^https?:\/\//.test(url)) return toast('Enter a full URL incl. https://');
+  btn.disabled = true; showSpinner();
+
+  const r = await fetch(import.meta.env.VITE_API_BASE + '/api/audit', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ url, email, name })
+  });
+  const data = await r.json();
+  if(!r.ok) throw new Error(data.error || 'audit_failed');
+
+  // show results
+  renderSummary({
+    score: data.overallScore,
+    fixes: data.topFixes,
+    html: data.reportUrlHTML,
+    pdf: data.reportUrlPDF
+  });
+}
+Vite env
+
+ini
+Copy
+Edit
+VITE_API_BASE=https://<your-sitesurgeon-api>.replit.app
+2) Server settings (API)
+In the API Repl, set env:
+
+GHL_WEBHOOK_URL=<your GHL incoming webhook>
+
+BASE_URL=https://<your-sitesurgeon-api>.replit.app
+
+BRAND_NAME=HugemouthSEO
+
+Ensure CORS lets the frontend origin through.
+
+If Chrome fails to launch on Replit, drop in a PSI API key and the fallback in the code we provided will handle it.
+
+3) Show a results screen
+After the POST returns, show:
+
+Overall Score badge
+
+Top 3 Critical Fixes (title + why + “How to fix”)
+
+Buttons: View HTML Report, Download PDF, Book Fix Call
+
+Copy-paste task for your Replit agent
+pgsql
+Copy
+Edit
+Wire the landing page form to the SiteSurgeon API.
+
+- Add VITE_API_BASE in frontend env and use it in fetch('/api/audit').
+- Validate inputs; show spinner + error states.
+- On success, render a Results section with score badge, top 3 fixes, and buttons to report HTML/PDF.
+- Add a “Book Setup Call” button linking to our GHL calendar.
+- In the API, set CORS for the frontend origin and confirm GHL webhook fires with report links.
+- Return the live frontend URL and run a test audit on https://example.com to verify.
+Quick QA (2 minutes)
+Audit 3 sites (one good, one mid, one broken URL).
+
+Confirm:
+
+JSON returns overallScore + topFixes.
+
+Reports render and download.
+
+A contact appears in GHL with report links in the workflow.
+
+Your Day-0 email fires.
+
+Tiny copy nits (optional but smart)
+Replace placeholder vanity stats (“10,000+ audits”, “95% accuracy”) unless you can back them up. Use: “Results in ~60 seconds. No signup.”
+
+Ping me the API URL when it’s live and I’ll run a sanity audit + check your GHL webhook hit.
+
+
+
+
+
+
+
+
+
+Sources
+
+Ask ChatGPT
