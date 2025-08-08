@@ -2,11 +2,19 @@ import lighthouse from "lighthouse";
 import * as chromeLauncher from "chrome-launcher";
 
 export async function auditUrl(url: string) {
-  if (process.env.FORCE_PSI === "1") return runPSI(url);
+  console.log(`Starting audit for ${url}`);
+  
+  if (process.env.FORCE_PSI === "1") {
+    console.log('FORCE_PSI=1, using PSI directly');
+    return runPSI(url);
+  }
+  
+  console.log('Attempting local Chrome first...');
   try {
     const chrome = await chromeLauncher.launch({
       chromeFlags: ["--headless", "--no-sandbox"]
     });
+    console.log(`Chrome launched on port ${chrome.port}`);
     const result = await lighthouse(url, {
       port: chrome.port,
       output: "json",
@@ -14,9 +22,11 @@ export async function auditUrl(url: string) {
       screenEmulation: { mobile: true, width: 360, height: 640, deviceScaleFactor: 2, disabled: false }
     }, { onlyCategories: ["performance","seo","best-practices","accessibility"] });
     await chrome.kill();
+    console.log('Local Chrome audit completed successfully');
     return JSON.parse(result.report);
-  } catch {
-    return runPSI(url); // fallback
+  } catch (error) {
+    console.log('Local Chrome failed, falling back to PSI:', error.message);
+    return runPSI(url);
   }
 }
 

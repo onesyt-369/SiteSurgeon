@@ -64,16 +64,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send GHL webhook (non-blocking)
       sendToGHL({
-        event: "site_audit_completed",
-        timestamp: dayjs().toISOString(),
-        contact: { email, name, source: "SiteSurgeon" },
-        site: { url: out.finalUrl || url, statusCode: 200 },
+        url,
+        email,
+        name,
+        overallScore: scored.scores.overall,
         scores: scored.scores,
-        top_fixes: scored.topFixes,
-        links: {
-          report_html: out.reportHtmlUrl,
-          report_pdf: out.reportPdfUrl,
-          screenshot_mobile: out.screenshotUrl
+        topFixes: scored.topFixes,
+        reportUrls: {
+          html: out.reportHtmlUrl,
+          pdf: out.reportPdfUrl,
+          screenshot: out.screenshotUrl
         }
       }).catch(() => {});
 
