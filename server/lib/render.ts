@@ -36,8 +36,16 @@ export async function renderAndSave({ id, url, lh, extra, scored, brand, baseUrl
   let screenshotGenerated = false;
   
   try {
-    const browser = await puppeteer.launch({ 
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-accelerated-2d-canvas", "--no-first-run", "--no-zygote", "--single-process", "--disable-gpu"] 
+    function chromiumPath() {
+      return process.env.PUPPETEER_EXECUTABLE_PATH
+          || "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium"
+          || "/usr/bin/chromium"
+          || "/usr/bin/chromium-browser";
+    }
+
+    const browser = await puppeteer.launch({
+      executablePath: chromiumPath(),
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });

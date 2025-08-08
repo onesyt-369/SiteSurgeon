@@ -2,22 +2,11 @@ import lighthouse from "lighthouse";
 import * as chromeLauncher from "chrome-launcher";
 
 export async function auditUrl(url: string) {
-  // Use PSI API directly in Replit environment
-  const key = process.env.GOOGLE_PSI_API_KEY;
-  if (key) {
-    try {
-      const r = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&category=PERFORMANCE&category=SEO&category=BEST_PRACTICES&category=ACCESSIBILITY&strategy=MOBILE&key=${key}`);
-      const result = await r.json();
-      return result.lighthouseResult || result;
-    } catch (err) {
-      console.error('PSI API error:', err);
-      throw err;
-    }
-  }
-  
-  // Fallback to local Chrome if PSI fails
+  if (process.env.FORCE_PSI === "1") return runPSI(url);
   try {
-    const chrome = await chromeLauncher.launch({ chromeFlags: ["--headless", "--no-sandbox"] });
+    const chrome = await chromeLauncher.launch({
+      chromeFlags: ["--headless", "--no-sandbox"]
+    });
     const result = await lighthouse(url, {
       port: chrome.port,
       output: "json",
@@ -26,8 +15,22 @@ export async function auditUrl(url: string) {
     }, { onlyCategories: ["performance","seo","best-practices","accessibility"] });
     await chrome.kill();
     return JSON.parse(result.report);
-  } catch (err) {
-    console.error('Chrome launch error:', err);
-    throw new Error('Both PSI API and local Chrome failed');
+  } catch {
+    return runPSI(url); // fallback
   }
+}
+
+async function runPSI(url: string) {
+  const key = process.env.GOOGLE_PSI_API_KEY;
+  if (!key) throw new Error("GOOGLE_PSI_API_KEY missing");
+  const resp = await fetch(
+    "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+    + `?url=${encodeURIComponent(url)}`
+    + "&category=PERFORMANCE&category=SEO&category=BEST_PRACTICES&category=ACCESSIBILITY"
+    + "&strategy=MOBILE&locale=en&prettyPrint=false"
+    + `&key=${key}`
+  );
+  const json = await resp.json();
+  if (!json.lighthouseResult) throw new Error("PSI: no lighthouseResult");
+  return json.lighthouseResult; // same shape our scoring expects
 }

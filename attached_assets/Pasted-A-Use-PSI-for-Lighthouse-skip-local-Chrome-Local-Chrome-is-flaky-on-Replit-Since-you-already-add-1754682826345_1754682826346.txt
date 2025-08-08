@@ -1,0 +1,93 @@
+A) Use PSI for Lighthouse (skip local Chrome)
+Local Chrome is flaky on Replit. Since you already added the PSI key, just force the PSI path.
+
+In lib/lighthouse.mjs, use this version (always falls back to PSI if local Chrome fails; you can also flip it to PSI-only by setting FORCE_PSI=1):
+
+js
+Copy
+Edit
+import lighthouse from "lighthouse";
+import chromeLauncher from "chrome-launcher";
+
+export async function auditUrl(url) {
+  if (process.env.FORCE_PSI === "1") return runPSI(url);
+  try {
+    const chrome = await chromeLauncher.launch({
+      chromeFlags: ["--headless", "--no-sandbox"]
+      // If you installed Chromium, you can add:
+      // chromePath: "/usr/bin/chromium"
+    });
+    const result = await lighthouse(url, {
+      port: chrome.port,
+      output: "json",
+      formFactor: "mobile",
+      screenEmulation: { mobile: true, width: 360, height: 640, deviceScaleFactor: 2, disabled: false }
+    }, { onlyCategories: ["performance","seo","best-practices","accessibility"] });
+    await chrome.kill();
+    return JSON.parse(result.report);
+  } catch {
+    return runPSI(url); // fallback
+  }
+}
+
+async function runPSI(url) {
+  const key = process.env.GOOGLE_PSI_API_KEY;
+  if (!key) throw new Error("GOOGLE_PSI_API_KEY missing");
+  const resp = await fetch(
+    "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+    + `?url=${encodeURIComponent(url)}`
+    + "&category=PERFORMANCE&category=SEO&category=BEST_PRACTICES&category=ACCESSIBILITY"
+    + "&strategy=MOBILE&locale=en&prettyPrint=false"
+    + `&key=${key}`
+  );
+  const json = await resp.json();
+  if (!json.lighthouseResult) throw new Error("PSI: no lighthouseResult");
+  return json.lighthouseResult; // same shape our scoring expects
+}
+Optional: set a secret FORCE_PSI=1 in Replit to skip trying local Chrome entirely.
+
+B) Make Puppeteer (PDF/screenshots) use the system Chromium
+You do still need a browser for PDF/screenshot. Point Puppeteer at the Chromium you installed.
+
+In lib/render.mjs, change the launch to:
+
+js
+Copy
+Edit
+import puppeteer from "puppeteer";
+
+function chromiumPath() {
+  return process.env.PUPPETEER_EXECUTABLE_PATH
+      || "/usr/bin/chromium"
+      || "/usr/bin/chromium-browser";
+}
+
+const browser = await puppeteer.launch({
+  executablePath: chromiumPath(),
+  args: ["--no-sandbox", "--disable-setuid-sandbox"]
+});
+If you’re not sure of the path, run in the Replit shell:
+which chromium || which chromium-browser
+
+C) Redeploy & test
+(Optional) Add Secrets: FORCE_PSI=1 and keep your GOOGLE_PSI_API_KEY.
+
+Deploy.
+
+Test:
+
+bash
+Copy
+Edit
+curl -X POST https://<your-api>.replit.app/api/audit \
+  -H "content-type: application/json" \
+  -d '{"url":"https://example.com","email":"owner@example.com"}'
+You should get overallScore, topFixes, and links to report.html / report.pdf. Check Replit logs for the GHL webhook POST.
+
+If anything still hangs, tell me:
+
+the result of which chromium
+
+any error lines from the Replit console
+
+I’ll give you the exact one-line patch.
