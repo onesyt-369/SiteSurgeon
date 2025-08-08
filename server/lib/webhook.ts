@@ -31,18 +31,23 @@ export async function sendToGHL(auditData: {
   };
 
   try {
-    console.log('Sending GHL webhook:', payload);
+    console.log('Sending GHL webhook:', JSON.stringify(payload, null, 2));
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
     
-    const responseText = await response.text();
-    console.log(`GHL webhook response: ${response.status} ${response.statusText}`, responseText);
+    console.log('GHL webhook status:', response.status);
+    try { 
+      const responseText = await response.text();
+      console.log('GHL webhook body:', responseText.slice(0, 200)); 
+    } catch (e) {
+      console.log('Could not read webhook response body');
+    }
     
     if (!response.ok) {
-      console.error('GHL webhook failed:', response.status, responseText);
+      console.error('GHL webhook failed with status:', response.status);
     } else {
       console.log('GHL webhook sent successfully');
     }
