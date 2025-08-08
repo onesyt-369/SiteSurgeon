@@ -31,14 +31,34 @@ export async function renderAndSave({ id, url, lh, extra, scored, brand, baseUrl
   const htmlPath = path.join(outDir, "report.html");
   await fs.writeFile(htmlPath, html, "utf8");
 
-  const browser = await puppeteer.launch({ args: ["--no-sandbox"] });
-  const page = await browser.newPage();
-  await page.setContent(html, { waitUntil: "networkidle0" });
-  const pdfPath = path.join(outDir, "report.pdf");
-  await page.pdf({ path: pdfPath, format: "A4", printBackground: true });
-  const pngPath = path.join(outDir, "mobile.png");
-  await page.screenshot({ path: pngPath, fullPage: true });
-  await browser.close();
+  // Try to generate PDF and screenshot, but don't fail if Puppeteer isn't available
+  let pdfGenerated = false;
+  let screenshotGenerated = false;
+  
+  try {
+    const browser = await puppeteer.launch({ 
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-accelerated-2d-canvas", "--no-first-run", "--no-zygote", "--single-process", "--disable-gpu"] 
+    });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+    
+    const pdfPath = path.join(outDir, "report.pdf");
+    await page.pdf({ path: pdfPath, format: "A4", printBackground: true });
+    pdfGenerated = true;
+    
+    const pngPath = path.join(outDir, "mobile.png");
+    await page.screenshot({ path: pngPath, fullPage: true });
+    screenshotGenerated = true;
+    
+    await browser.close();
+  } catch (err) {
+    console.warn('PDF/Screenshot generation failed:', err.message);
+    // Create placeholder files
+    const pdfPath = path.join(outDir, "report.pdf");
+    const pngPath = path.join(outDir, "mobile.png");
+    await fs.writeFile(pdfPath, "PDF generation not available in this environment", "utf8");
+    await fs.writeFile(pngPath, "", "utf8");
+  }
 
   const base = process.env.BASE_URL?.replace(/\/$/, "") || "";
   return {
