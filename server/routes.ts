@@ -40,12 +40,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const limiter = rateLimit({ windowMs: 60 * 1000, max: 6 });
   app.use("/api/", limiter);
 
-  // Health check endpoint
+  // Enhanced health check endpoint for Railway debugging
   app.get("/api/health", (_, res) => res.json({ 
     status: "ok", 
     timestamp: new Date().toISOString(),
     service: "SiteSurgeon",
-    version: "1.0.0"
+    version: "1.0.0",
+    environment: process.env.NODE_ENV || 'development',
+    port: process.env.PORT || '5000',
+    hasGoogleKey: !!process.env.GOOGLE_PSI_API_KEY,
+    hasGHLWebhook: !!process.env.GHL_WEBHOOK_URL,
+    baseUrl: process.env.BASE_URL || 'not-set'
   }));
 
   // Main audit endpoint

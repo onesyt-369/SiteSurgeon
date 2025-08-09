@@ -56,16 +56,15 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
+  // Railway-ready port configuration
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  
+  // Railway requires standard HTTP listen, not server.listen with options
+  server.listen(port, "0.0.0.0", () => {
+    log(`🚀 SiteSurgeon server listening on port ${port}`);
+    log(`📊 Health check: http://localhost:${port}/api/health`);
+    log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 })();
