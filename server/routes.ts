@@ -19,7 +19,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  app.use(cors());
+  // Railway-ready CORS configuration
+  const corsOptions = {
+    origin: [
+      'https://sitesurgeon-production.up.railway.app',
+      'http://localhost:5000',
+      'http://localhost:3000',
+      // Add GHL domains if needed
+      'https://services.leadconnectorhq.com'
+    ],
+    credentials: true
+  };
+  app.use(cors(corsOptions));
   app.use(express.json({ limit: "1mb" }));
   
   // Serve static reports
@@ -30,7 +41,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/", limiter);
 
   // Health check endpoint
-  app.get("/api/health", (_, res) => res.json({ ok: true }));
+  app.get("/api/health", (_, res) => res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    service: "SiteSurgeon",
+    version: "1.0.0"
+  }));
 
   // Main audit endpoint
   app.post("/api/audit", async (req, res) => {

@@ -1,0 +1,59 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Use Node 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build project
+      run: npm run build
+
+    - name: Deploy to Railway
+      uses: railwayapp/action@v0.1.1
+      with:
+        token: ${{ secrets.RAILWAY_TOKEN }}
+        command: deploy
+        wait: true
+
+    - name: Health check
+      run: |
+        echo "Waiting 30 seconds for deployment to be ready..."
+        sleep 30
+        echo "Testing health endpoint..."
+        curl -f ${{ secrets.BASE_URL }}/api/health || exit 1
+        echo "✅ Health check passed!"
+
+    - name: Smoke test audit endpoint  
+      run: |
+        echo "Testing audit endpoint..."
+        response=$(curl -X POST ${{ secrets.BASE_URL }}/api/audit \
+          -H "Content-Type: application/json" \
+          -d '{"url":"https://example.com","email":"test@example.com","name":"CI Test"}' \
+          -w "%{http_code}" \
+          -s -o /tmp/response.json)
+        
+        if [ "$response" = "200" ]; then
+          echo "✅ Audit endpoint test passed!"
+          cat /tmp/response.json
+        else
+          echo "❌ Audit endpoint test failed with status: $response"
+          cat /tmp/response.json
+          exit 1
+        fi

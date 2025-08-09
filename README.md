@@ -165,12 +165,57 @@ Create these custom fields in GoHighLevel to capture audit data:
 
 ## Deployment
 
+### Railway Deployment (Recommended)
+
+#### Setup Auto-Deploy with GitHub Actions
+
+1. **Create Railway Project**
+   - Go to https://railway.app/new
+   - Click "Deploy from GitHub repo"  
+   - Select your SiteSurgeon repository
+   - Railway will start initial deployment
+
+2. **Get Railway Token**
+   - Go to Railway Account → Settings → Tokens
+   - Create new token with "Deploy" scope
+   - Copy the token
+
+3. **Configure GitHub Secrets**
+   - In your GitHub repo → Settings → Secrets and variables → Actions
+   - Add these repository secrets:
+     - `RAILWAY_TOKEN`: Your Railway token
+     - `BASE_URL`: Your Railway app URL (e.g., `https://sitesurgeon-production.up.railway.app`)
+
+4. **Set Railway Environment Variables**
+   
+   In Railway → Your Project → Settings → Variables, add:
+   ```
+   GOOGLE_PSI_API_KEY=your_google_psi_api_key_here
+   GHL_WEBHOOK_URL=https://services.leadconnectorhq.com/hooks/pQEoIjSHbKGdVObcZ8VS/webhook-trigger/d99fb678-8c72-4248-a0b1-1e4881e5fc9d
+   FORCE_PSI=1
+   NODE_ENV=production
+   NIXPACKS_PKGS=chromium
+   PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+   BASE_URL=https://your-app.up.railway.app
+   ```
+
+5. **Deploy**
+   - Push to main branch
+   - GitHub Actions will automatically deploy to Railway
+   - Health checks will verify deployment success
+
+#### Manual Railway Deployment
+If you prefer manual deployment:
+1. Connect your GitHub repository to Railway
+2. Set environment variables (step 4 above)
+3. Deploy with default build settings
+
 ### Replit Deployment
 1. Import this repository to Replit
 2. Set environment variables in Secrets
 3. Deploy using Replit's deployment system
 
-### Railway/Vercel Deployment
+### Vercel Deployment
 1. Connect your GitHub repository
 2. Set environment variables
 3. Deploy with default build settings
