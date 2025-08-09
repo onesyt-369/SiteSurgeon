@@ -58,8 +58,8 @@ app.use((req, res, next) => {
 
   // Railway-ready port configuration
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  const port = parseInt(process.env.PORT || '5000', 10);
+  // Default to 8080 for Railway deployment.
+  const port = parseInt(process.env.PORT || '8080', 10);
   
   // Railway requires standard HTTP listen, not server.listen with options
   server.listen(port, "0.0.0.0", () => {

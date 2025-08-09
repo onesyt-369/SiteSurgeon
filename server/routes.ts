@@ -47,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     service: "SiteSurgeon",
     version: "1.0.0",
     environment: process.env.NODE_ENV || 'development',
-    port: process.env.PORT || '5000',
+    port: process.env.PORT || '8080',
     hasGoogleKey: !!process.env.GOOGLE_PSI_API_KEY,
     hasGHLWebhook: !!process.env.GHL_WEBHOOK_URL,
     baseUrl: process.env.BASE_URL || 'not-set'
