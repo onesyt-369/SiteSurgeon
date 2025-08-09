@@ -1,14 +1,12 @@
-[providers]
-node = "18"
+# nixpacks.toml
+providers = ["node"]
 
 [phases.setup]
-pkgs = ["chromium", "python38", "gcc"]
-
-[phases.install]
-cmds = ["npm ci"]
+# install Chromium so screenshots/Puppeteer can work if needed
+nixPkgs = ["chromium"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = ["npm ci", "npm run build"]
 
-[start]
+[phases.start]
 cmd = "npm start"
