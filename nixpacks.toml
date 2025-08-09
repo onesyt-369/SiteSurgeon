@@ -1,0 +1,14 @@
+[providers]
+node = "18"
+
+[phases.setup]
+pkgs = ["chromium", "python38", "gcc"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm start"

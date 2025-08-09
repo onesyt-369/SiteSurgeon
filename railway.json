@@ -7,6 +7,12 @@
       "phases": {
         "setup": {
           "pkgs": ["chromium", "python38", "gcc"]
+        },
+        "install": {
+          "cmds": ["npm ci"]
+        },
+        "build": {
+          "cmds": ["npm run build"]
         }
       }
     }
